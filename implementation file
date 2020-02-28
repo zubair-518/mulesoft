@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+    <file:connector name="File_1"  autoDelete="true" streaming="false" validateConnections="true" doc:name="File" outputPattern="#[message.inboundProperties.originalFilename].#[message.id]"/>
+    <file:connector name="File_outbound"  autoDelete="true" streaming="true" validateConnections="true" doc:name="File" />
+    <flow name="zipfile_to_textfile">
+    	<file:inbound-endpoint path="C:\Users\Desktop\New folder\input" responseTimeout="10000" doc:name="File" pollingFrequency="100000" connector-ref="File_1" fileAge="5000"  moveToPattern="#[message.inboundProperties.originalFilename]_#[message.id]" moveToDirectory="C:\Users\Desktop\New folder\backup">
+            <file:filename-regex-filter pattern="(.*)" caseSensitive="false"/>
+        </file:inbound-endpoint>
+        <logger message="Demo Zip file read from Zip folder " level="INFO" doc:name="Logger"/>
+        <custom-transformer class="org.soitoolkit.commons.mule.zip.UnzipTransformer" doc:name="Java">
+        </custom-transformer>
+        <foreach doc:name="For Each">
+            <set-variable variableName="fileName" value="#[payload.fileName]" doc:name="Variable"/>
+            <set-payload value="#[payload.content]" doc:name="Set Payload"/>
+            <file:outbound-endpoint path="C:\Users\Desktop\New folder\output" outputPattern="#[message.id]_#[flowVars.fileName]" connector-ref="File_outbound" responseTimeout="10000" doc:name="File"/>
+        </foreach>
+    </flow>
+    </mule>
