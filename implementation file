@@ -1,17 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+<mule xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit"
+	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns:spring="http://www.springframework.org/schema/beans" 
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
 http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
 http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
-    <file:connector name="File_1"  autoDelete="true" streaming="false" validateConnections="true" doc:name="File" outputPattern="#[message.inboundProperties.originalFilename].#[message.id]"/>
-    <file:connector name="File_outbound"  autoDelete="true" streaming="true" validateConnections="true" doc:name="File" />
+    <file:connector name="File_1"  autoDelete="false" streaming="true" validateConnections="true" doc:name="File" outputPattern="#[message.inboundProperties.originalFilename].#[message.id]"/>
+    <file:connector name="File_outbound"  autoDelete="true" streaming="true" validateConnections="true" doc:name="File" outputPattern="#[message.id]_#[flowVars.fileName]"/>
     <flow name="zipfile_to_textfile">
-    	<file:inbound-endpoint path="C:\Users\Desktop\New folder\input" responseTimeout="10000" doc:name="File" pollingFrequency="100000" connector-ref="File_1" fileAge="5000"  moveToPattern="#[message.inboundProperties.originalFilename]_#[message.id]" moveToDirectory="C:\Users\Desktop\New folder\backup">
+    	<file:inbound-endpoint path="C:\Users\zubair.rafaqat\Desktop\New folder\input\NEW" responseTimeout="10000" doc:name="File" pollingFrequency="100000" connector-ref="File_1" fileAge="5000"  moveToPattern="#[message.inboundProperties.originalFilename]_#[message.id]" moveToDirectory="C:\Users\zubair.rafaqat\Desktop\New folder\backup">
             <file:filename-regex-filter pattern="(.*)" caseSensitive="false"/>
         </file:inbound-endpoint>
         <logger message="Demo Zip file read from Zip folder " level="INFO" doc:name="Logger"/>
@@ -20,7 +22,97 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
         <foreach doc:name="For Each">
             <set-variable variableName="fileName" value="#[payload.fileName]" doc:name="Variable"/>
             <set-payload value="#[payload.content]" doc:name="Set Payload"/>
-            <file:outbound-endpoint path="C:\Users\Desktop\New folder\output" outputPattern="#[message.id]_#[flowVars.fileName]" connector-ref="File_outbound" responseTimeout="10000" doc:name="File"/>
+            <file:outbound-endpoint path="C:\Users\zubair.rafaqat\Desktop\New folder\output" outputPattern="#[message.id]_#[flowVars.fileName]" connector-ref="File_outbound" responseTimeout="10000" doc:name="File"/>
         </foreach>
+           <choice-exception-strategy doc:name="Choice Exception Strategy">
+
+            <apikit:mapping-exception-strategy doc:name="Mapping Exception Strategy">
+           <apikit:mapping statusCode="404">
+            <apikit:exception value="org.mule.module.apikit.exception.NotFoundException" />
+            <apikit:exception value="org.mule.module.http.internal.request.ResponseValidatorException"/>
+            <set-property propertyName="http.reason" value="#[message.inboundProperties['http.reason'] ]" doc:name="Property"/>
+
+            <set-variable variableName="errMsg" value="#[message.inboundProperties['http.reason'] == null || message.inboundProperties['http.reason'].length() == 0 ? &quot;Resource not found&quot; : message.inboundProperties['http.reason'] ]" doc:name="errMsg"/>
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{  &quot;errorCode&quot;: 404, &quot;message&quot;:  &quot;#[flowVars.errMsg]&quot; }" doc:name="Set Payload"/>
+                    <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+
+        </apikit:mapping>
+        <apikit:mapping statusCode="405">
+            <apikit:exception value="org.mule.module.apikit.exception.MethodNotAllowedException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{  &quot;errorCode&quot;: 405, &quot;message&quot;: &quot;Method not allowed&quot; } " doc:name="Set Payload" />
+                    <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+
+        </apikit:mapping>
+        <apikit:mapping statusCode="415">
+            <apikit:exception value="org.mule.module.apikit.exception.UnsupportedMediaTypeException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{  &quot;errorCode&quot;: 415, &quot;message&quot;: &quot;Unsupported media type&quot; } " doc:name="Set Payload" />
+                    <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+
+       </apikit:mapping>
+        <apikit:mapping statusCode="406">
+            <apikit:exception value="org.mule.module.apikit.exception.NotAcceptableException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{  &quot;errorCode&quot;: 406, &quot;message&quot;:  &quot;Not acceptable&quot; } " doc:name="Set Payload" />
+                    <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+
+        </apikit:mapping>
+        <apikit:mapping statusCode="400">
+            <apikit:exception value="org.mule.module.apikit.exception.BadRequestException" />
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property" />
+            <set-payload value="{ &quot;errorCode&quot;: 400,  &quot;message&quot;: &quot;Bad request&quot; } " doc:name="Set Payload" />
+                    <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+
+        </apikit:mapping>
+        <apikit:mapping statusCode="410">
+            <apikit:exception value="org.mule.api.MessagingException"/>
+            <choice doc:name="Choice">
+                <when expression="exception.message.contains('org.mule.module.json.validation.JsonSchemaValidationException')">
+                    <set-property propertyName="http.status" value="#[412]" doc:name="http.status"/>
+                    <set-property propertyName="http.reason" value="Schema Validation Error" doc:name="http.reason"/>
+                    <set-payload value="{  &quot;errorCode&quot;: 412, &quot;message&quot;:  &quot;#[exception.message]&quot; }" doc:name="Set Payload"/>
+                            <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+                </when>
+                <otherwise>
+                    <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+                    <set-variable variableName="errMsg" value="#[message.inboundProperties['http.reason'] == null ? &quot;Resource not available&quot; : message.inboundProperties['http.reason'] ]" doc:name="errMsg"/>
+                    <set-payload value="{  &quot;errorCode&quot;: 410, &quot;message&quot;:  &quot;#[flowVars.errMsg]&quot; }" doc:name="Set Payload"/>
+                            <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+                </otherwise>
+            </choice>
+
+        </apikit:mapping>
+        <apikit:mapping statusCode="412">
+            <apikit:exception value="org.mule.api.MessagingException"/>
+            <apikit:exception value="org.mule.module.json.validation.JsonSchemaValidationException"/>
+
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-variable variableName="errMsg" value="#[message.inboundProperties['http.reason'] == null ? &quot;Resource not available&quot; : message.inboundProperties['http.reason'] ]" doc:name="errMsg"/>
+            <set-payload value="{  &quot;errorCode&quot;: 412, &quot;message&quot;:  &quot;#[flowVars.errMsg]&quot; }" doc:name="Set Payload"/>
+                    <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+
+        </apikit:mapping>                      
+                <apikit:mapping statusCode="500">
+            <apikit:exception value="org.mule.component.ComponentException"/>
+            <apikit:exception value="java.lang.Exception"/>
+                    <apikit:exception value="org.mule.api.expression.InvalidExpressionException"/>
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{  &quot;errorCode&quot;: 500, &quot;message&quot;: &quot;Internal server error&quot; } " doc:name="Set Payload"/>
+                    <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+        </apikit:mapping>
+        <apikit:mapping statusCode="504">
+            <apikit:exception value="java.net.SocketTimeoutException"/>
+            <apikit:exception value="java.net.ConnectException"/>
+            <apikit:exception value="javax.net.ssl.SSLException"/>
+            <apikit:exception value="java.sql.SQLException"/>
+            <set-property propertyName="Content-Type" value="application/json" doc:name="Property"/>
+            <set-payload value="{   &quot;errorCode&quot;: 504, &quot;message&quot;: &quot;Connection timed out&quot; } " doc:name="Set Payload"/>
+                    <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+        </apikit:mapping>
+          </apikit:mapping-exception-strategy>
+        </choice-exception-strategy>
+   
     </flow>
     </mule>
