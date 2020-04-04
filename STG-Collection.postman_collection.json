@@ -1,0 +1,322 @@
+{
+	"info": {
+		"_postman_id": "7a09ab9a-6214-40b9-870d-2d132c2bda04",
+		"name": "STG-Collection",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "User",
+			"item": [
+				{
+					"name": "GET-USER",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8081/v1/sfg/user",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"v1",
+								"sfg",
+								"user"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET-BY-ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8081/v1/sfg/user/4",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"v1",
+								"sfg",
+								"user",
+								"4"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ADD-USER",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"SFG_USER_ID\" : \"14\",\r\n  \"SFG_USER_NAME\" : \"Test2\",\r\n  \"SFG_USER_LOGON\" : \"test@123\",\r\n  \"SFG_USER_AUTH\" : \"2\",\r\n  \"SFG_USER_ROLE\" : \"2\",\r\n  \"SFG_USER_UPDATED_DT\" : \"2020-04-04 20:07:44.623\",\r\n  \"SFG_USER_EMAIL\" : \"test2@123.com\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8081/v1/sfg/user/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"v1",
+								"sfg",
+								"user",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "UPDATE-USER",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"SFG_USER_EMAIL\": \"test2@123.com\",\r\n    \"SFG_USER_NAME\": \"tom\",\r\n    \"SFG_USER_ID\": 40,\r\n    \"SFG_USER_AUTH\": 2,\r\n    \"SFG_USER_UPDATED_DT\": \"2020-04-04T00:00:00\",\r\n    \"SFG_USER_ROLE\": 2,\r\n    \"SFG_USER_LOGON\": \"test@123\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8081/v1/sfg/user/14",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"v1",
+								"sfg",
+								"user",
+								"14"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE-USER",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8081/v1/sfg/user/40",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"v1",
+								"sfg",
+								"user",
+								"40"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET-BY-FILTER",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8081/v1/sfg/user/filter/aaaa",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"v1",
+								"sfg",
+								"user",
+								"filter",
+								"aaaa"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"protocolProfileBehavior": {}
+		},
+		{
+			"name": "Server",
+			"item": [
+				{
+					"name": "GET-Server",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8081/v1/sfg/server",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"v1",
+								"sfg",
+								"server"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET-BY-ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8081/v1/sfg/server/1",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"v1",
+								"sfg",
+								"server",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ADD-Server",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"SFG_SERVER_ID\": 2,\r\n    \"SFG_SERVER_NAME\": \"testserver2\",\r\n    \"SFG_SERVER_STATUS\": 1,\r\n    \"SFG_SERVER_APP\": \"test2\",\r\n    \"SFG_SERVER_DC\": \"test2\",\r\n    \"SFG_SERVER_ZONE\": \"test2\",\r\n    \"SFG_SERVER_PROTOCOL\": \"test2\",\r\n    \"SFG_SERVER_ADDED_DT\": \"2020-04-05 00:40:01.640\",\r\n    \"SFG_SERVER_UPDATED_DT\": \"2020-04-05 00:40:01.640\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8081/v1/sfg/server/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"v1",
+								"sfg",
+								"server",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "UPDATE-Server",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"SFG_SERVER_ID\": 2,\r\n    \"SFG_SERVER_NAME\": \"testserver2-updated\",\r\n    \"SFG_SERVER_STATUS\": 1,\r\n    \"SFG_SERVER_APP\": \"test2\",\r\n    \"SFG_SERVER_DC\": \"test2\",\r\n    \"SFG_SERVER_ZONE\": \"test2\",\r\n    \"SFG_SERVER_PROTOCOL\": \"test2\",\r\n    \"SFG_SERVER_ADDED_DT\": \"2020-04-05 00:40:01.640\",\r\n    \"SFG_SERVER_UPDATED_DT\": \"2020-04-05 00:40:01.640\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8081/v1/sfg/server/2",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"v1",
+								"sfg",
+								"server",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE-Server",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8081/v1/sfg/server/2",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"v1",
+								"sfg",
+								"server",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET-BY-FILTER",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8081/v1/sfg/server/filter/-update",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"v1",
+								"sfg",
+								"server",
+								"filter",
+								"-update"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"protocolProfileBehavior": {}
+		}
+	],
+	"protocolProfileBehavior": {}
+}
