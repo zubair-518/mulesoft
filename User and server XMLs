@@ -1,0 +1,608 @@
+<!--  user XML Start -->
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+    <sub-flow name="getUserOffsetValueFlow">
+        <logger level="INFO" doc:name="Logger" message="getting data from database"/>
+                <dw:transform-message doc:name="Setting Variables">
+            <dw:set-variable variableName="offset"><![CDATA[%dw 1.0
+%output application/java
+---
+inboundProperties."http.query.params".offset when inboundProperties."http.query.params".offset !=null otherwise 0]]></dw:set-variable>
+            <dw:set-variable variableName="fetchsize"><![CDATA[%dw 1.0
+%output application/java
+---
+inboundProperties."http.query.params".fetchsize when inboundProperties."http.query.params".fetchsize !=null otherwise 20]]></dw:set-variable>
+        </dw:transform-message>
+	
+        <db:select config-ref="Generic_Database_Configuration" doc:name="Get All Records">
+            <db:parameterized-query><![CDATA[SELECT SFG_USER_ID
+      ,SFG_USER_NAME
+      ,SFG_USER_LOGON
+      ,SFG_USER_AUTH
+      ,SFG_USER_ROLE
+      ,SFG_USER_UPDATE_DT
+      ,SFG_USER_EMAIL
+  FROM SFG_USER 
+  ORDER BY SFG_USER_ID
+    OFFSET :offset rows fetch next :fetchsize rows only]]></db:parameterized-query>
+	  <db:in-param name="offset"  value="#[flowVars.offset]"/>
+    <db:in-param name="fetchsize"  value="#[flowVars.fetchsize]"/>
+        </db:select>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json skipNullOn="everywhere"
+---
+payload map ((item, index) -> {
+  userId : item.SFG_USER_ID,
+  userName : item.SFG_USER_NAME,
+  userLogon : item.SFG_USER_LOGON,
+  userAuth : item.SFG_USER_AUTH,
+  userRole : item.SFG_USER_ROLE,
+  userUpdatedDate : item.SFG_USER_UPDATED_DT,
+  userEmail : item.SFG_USER_EMAIL
+   }
+) when payload.size() !=0 otherwise []]]></dw:set-payload>
+        </dw:transform-message>
+        <set-property propertyName="http.status" value="#[dw('200 when payload != [] otherwise 404')]" doc:name="Set HTTP Status"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload when outboundProperties."http.status" == 200 
+otherwise "No Record Found"
+]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+   <!--  Filter by original file user -->
+     <sub-flow name="getUserFlow_filter">
+        <logger level="INFO" doc:name="Logger" message="getting data from database"/>
+        <dw:transform-message doc:name="Setting Variables">
+	<dw:set-variable variableName="offset"><![CDATA[%dw 1.0
+	%output application/java
+	---
+	inboundProperties."http.query.params".offset when inboundProperties."http.query.params".offset !=null otherwise 0]]>
+	</dw:set-variable>
+	<dw:set-variable variableName="fetchsize"><![CDATA[%dw 1.0
+	%output application/java
+	---
+	inboundProperties."http.query.params".fetchsize when inboundProperties."http.query.params".fetchsize !=null otherwise 20]]>
+	</dw:set-variable>
+            <dw:set-variable variableName="searchFilter"><![CDATA[%dw 1.0
+%output application/java
+---
+inboundProperties."http.uri.params".filter]]></dw:set-variable>
+</dw:transform-message>
+        <db:select config-ref="Generic_Database_Configuration" doc:name="Get By Filter">
+            <db:parameterized-query><![CDATA[SELECT SFG_USER_ID
+      ,SFG_USER_NAME
+      ,SFG_USER_LOGON
+      ,SFG_USER_AUTH
+      ,SFG_USER_ROLE
+      ,SFG_USER_UPDATED_DT
+      ,SFG_USER_EMAIL
+  FROM SFG_USER 
+  WHERE SFG_USER_NAME like :searchFilter]]></db:parameterized-query>
+  <db:in-param name="searchFilter"  value="#['%'+flowVars.searchFilter+'%']"/>
+        </db:select>
+             <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json skipNullOn="everywhere"
+---
+payload map ((item, index) -> {
+  userId : item.SFG_USER_ID,
+  userName : item.SFG_USER_NAME,
+  userLogon : item.SFG_USER_LOGON,
+  userAuth : item.SFG_USER_AUTH,
+  userRole : item.SFG_USER_ROLE,
+  userUpdatedDate : item.SFG_USER_UPDATED_DT,
+  userEmail : item.SFG_USER_EMAIL
+   }
+) when payload.size() !=0 otherwise []]]></dw:set-payload>
+        </dw:transform-message>
+        <set-property propertyName="http.status" value="#[dw('200 when payload != [] otherwise 404')]" doc:name="Set HTTP Status"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload when outboundProperties."http.status" == 200 
+otherwise "No Record Found"
+]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+	 </sub-flow>
+     
+	 <sub-flow name="getUserByIdFlow">
+        <logger level="INFO" doc:name="Logger" message="getting data from database"/>
+    <dw:transform-message doc:name="Setting Variables">
+	<dw:set-variable variableName="offset"><![CDATA[%dw 1.0
+	%output application/java
+	---
+	inboundProperties."http.query.params".offset when inboundProperties."http.query.params".offset !=null otherwise 0]]>
+	</dw:set-variable>
+	<dw:set-variable variableName="fetchsize"><![CDATA[%dw 1.0
+	%output application/java
+	---
+	inboundProperties."http.query.params".fetchsize when inboundProperties."http.query.params".fetchsize !=null otherwise 20]]>
+	</dw:set-variable>
+		<dw:set-variable variableName="userId"><![CDATA[%dw 1.0
+%output application/java
+---
+inboundProperties."http.uri.params".userId]]>
+	</dw:set-variable>
+</dw:transform-message>
+		<db:select config-ref="Generic_Database_Configuration" doc:name="Get By Id">
+            <db:parameterized-query><![CDATA[SELECT SFG_USER_ID
+      ,SFG_USER_NAME
+      ,SFG_USER_LOGON
+      ,SFG_USER_AUTH
+      ,SFG_USER_ROLE
+      ,SFG_USER_UPDATE_DT
+      ,SFG_USER_EMAIL
+  FROM SFG_USER 
+  WHERE SFG_USER_ID= :userId]]></db:parameterized-query>
+  <db:in-param name="userId"  value="#[flowVars.userId]"/>
+        </db:select>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json skipNullOn="everywhere"
+---
+{
+  userId : payload.SFG_USER_ID,
+  userName : payload.SFG_USER_NAME,
+  userLogon : payload.SFG_USER_LOGON,
+  userAuth : payload.SFG_USER_AUTH,
+  userRole : payload.SFG_USER_ROLE,
+  userUpdatedDate : payload.SFG_USER_UPDATED_DT,
+  userEmail : payload.SFG_USER_EMAIL
+   }
+ when payload.size() !=0 otherwise []]]></dw:set-payload>
+        </dw:transform-message>
+        <set-property propertyName="http.status" value="#[dw('200 when payload != [] otherwise 404')]" doc:name="Set HTTP Status"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload when outboundProperties."http.status" == 200 
+otherwise "No Record Found"
+]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+
+    </sub-flow>
+     <sub-flow name="postUserFlow">
+      <logger level="INFO" doc:name="Logger" message="getting data from database"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+  SFG_USER_NAME : payload.userName,
+  SFG_USER_LOGON : payload.userLogon,
+  SFG_USER_AUTH : payload.userAuth,
+  SFG_USER_ROLE : payload.userRole,
+  SFG_USER_UPDATED_DT : payload.userUpdatedDate,
+  SFG_USER_EMAIL : payload.userEmail
+}
+]]></dw:set-payload>
+        </dw:transform-message>
+
+        <db:insert config-ref="Generic_Database_Configuration" doc:name="Insert Record">
+            <db:parameterized-query><![CDATA[INSERT INTO SFG_USER
+(SFG_USER_NAME,SFG_USER_LOGON,SFG_USER_AUTH,SFG_USER_ROLE,SFG_USER_UPDATE_DT,SFG_USER_EMAIL)
+VALUES (:userName,:userLogin,:userAuth,:userRole,CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS DATE),:userEmail)]]></db:parameterized-query>
+		<db:in-param name="userName"  value="#[payload.SFG_USER_NAME]"/>
+		<db:in-param name="userLogin"  value="#[payload.SFG_USER_LOGON]"/>
+		<db:in-param name="userAuth"  value="#[payload.SFG_USER_AUTH]"/>
+		<db:in-param name="userRole"  value="#[payload.SFG_USER_ROLE]"/>		
+		<db:in-param name="userEmail"  value="#[payload.SFG_USER_EMAIL]"/>
+		
+		
+        </db:insert>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+"Record Inserted Successfully"
+]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+      <sub-flow name="deleteUserFlow">
+       <logger level="INFO" doc:name="Logger" message="getting data from database"/>
+        <set-variable variableName="userId" value="#[message.inboundProperties.'http.uri.params'.userid]" doc:name="userId"/>
+        <db:delete config-ref="Generic_Database_Configuration" doc:name="Delete Record">
+            <db:parameterized-query><![CDATA[Delete from SFG_USER where SFG_USER_ID = :userId]]></db:parameterized-query>
+              <db:in-param name="userId"  value="#[flowVars.userId]"/>
+        </db:delete>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+("Record Deleted Successfully" when payload != 0 otherwise "No Record Found")
+]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+       <sub-flow name="patchUserFlow">
+        <logger level="INFO" doc:name="Logger" message="getting data from database"/>
+
+                <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+  SFG_USER_NAME : payload.userName,
+  SFG_USER_LOGON : payload.userLogon,
+  SFG_USER_AUTH : payload.userAuth,
+  SFG_USER_ROLE : payload.userRole,
+  SFG_USER_UPDATED_DT : payload.userUpdatedDate,
+  SFG_USER_EMAIL : payload.userEmail
+}
+]]></dw:set-payload>
+            <dw:set-variable variableName="userId"><![CDATA[%dw 1.0
+%output application/java
+---
+inboundProperties.'http.uri.params'.userid]]></dw:set-variable>
+        </dw:transform-message>
+        <db:update config-ref="Generic_Database_Configuration" doc:name="Update record">
+            <db:parameterized-query><![CDATA[UPDATE SFG_USER SET
+
+SFG_USER_NAME = :userName,
+SFG_USER_LOGON = :userLogin,
+SFG_USER_AUTH = :userAuth,
+SFG_USER_ROLE = :userRole,
+SFG_USER_EMAIL = :userEmail
+ where
+SFG_USER_ID = :userId]]></db:parameterized-query>
+ 		<db:in-param name="userId"  value="#[flowVars.userId]"/>
+		<db:in-param name="userName"  value="#[payload.SFG_USER_NAME]"/>
+		<db:in-param name="userLogin"  value="#[payload.SFG_USER_LOGON]"/>
+		<db:in-param name="userAuth"  value="#[payload.SFG_USER_AUTH]"/>
+		<db:in-param name="userRole"  value="#[payload.SFG_USER_ROLE]"/>
+		<db:in-param name="userEmail"  value="#[payload.SFG_USER_EMAIL]"/>
+
+
+        </db:update>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+"Record Updated Successfully" when payload != 0 otherwise "No Record Found" 
+]]></dw:set-payload>
+        </dw:transform-message>
+        <set-property propertyName="http.status" value="#[dw('200 when payload == &quot;Record Updated Successfully&quot;otherwise 404')]" doc:name="Set HTTP Status"/>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+</mule>
+
+<!--  user XML Ends -->
+<!--  server XML Start -->
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+    <sub-flow name="getServerFlow">
+        <logger level="INFO" doc:name="Logger" message="Request Received From Getting Data from Database"/>
+        <dw:transform-message doc:name="Setting Variables">
+            <dw:set-variable variableName="offset"><![CDATA[%dw 1.0
+%output application/java
+---
+inboundProperties."http.query.params".offset when inboundProperties."http.query.params".offset !=null otherwise 0]]></dw:set-variable>
+            <dw:set-variable variableName="fetchsize"><![CDATA[%dw 1.0
+%output application/java
+---
+inboundProperties."http.query.params".fetchsize when inboundProperties."http.query.params".fetchsize !=null otherwise 20]]></dw:set-variable>
+        </dw:transform-message>
+		<db:select config-ref="Generic_Database_Configuration" doc:name="Get All Records">
+            <db:parameterized-query>
+			<![CDATA[SELECT SFG_SERVER_ID
+      ,SFG_SERVER_NAME
+      ,SFG_SERVER_STATUS
+      ,SFG_SERVER_APP
+      ,SFG_SERVER_DC
+      ,SFG_SERVER_ZONE
+      ,SFG_SERVER_PROTOCOL
+      ,SFG_SERVER_ADDED_DT
+      ,SFG_SERVER_UPDATED_DT
+  FROM SFG_SERVER
+  ORDER BY SFG_SERVER_ID]
+  OFFSET :offset rows fetch next :fetchsize rows only]]>
+  </db:parameterized-query>
+  <db:in-param name="offset"  value="#[flowVars.offset]"/>
+    <db:in-param name="fetchsize"  value="#[flowVars.fetchsize]"/>
+        </db:select>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json skipNullOn="everywhere"
+---
+payload map ((item, index) -> {
+	serverID: item.SFG_SERVER_ID,
+	serverName: item.SFG_SERVER_NAME,
+	serverStatus: item.SFG_SERVER_STATUS,
+	serverApp: item.SFG_SERVER_APP,
+	serverDc: item.SFG_SERVER_DC,
+	serverZone: item.SFG_SERVER_ZONE,
+	serverProtocol: item.SFG_SERVER_PROTOCOL,
+	serverAddedDate: item.SFG_SERVER_ADDED_DT,
+	serverUpdatedDate: item.SFG_SERVER_UPDATED_DT
+   }
+) when payload.size() !=0 otherwise []]]></dw:set-payload>
+        </dw:transform-message>
+        <set-property propertyName="http.status" value="#[dw('200 when payload != [] otherwise 404')]" doc:name="Set HTTP Status"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload when outboundProperties."http.status" == 200 
+otherwise "No Record Found"
+]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+    
+    <sub-flow name="getServerFlow_filter">
+        <logger message="Request Received From Getting Data from Database" level="INFO" doc:name="Logger"/>
+
+        <dw:transform-message doc:name="Setting Variables">
+	<dw:set-variable variableName="offset"><![CDATA[%dw 1.0
+	%output application/java
+	---
+	inboundProperties."http.query.params".offset when inboundProperties."http.query.params".offset !=null otherwise 0]]>
+	</dw:set-variable>
+	<dw:set-variable variableName="fetchsize"><![CDATA[%dw 1.0
+	%output application/java
+	---
+	inboundProperties."http.query.params".fetchsize when inboundProperties."http.query.params".fetchsize !=null otherwise 20]]>
+	</dw:set-variable>
+            <dw:set-variable variableName="searchFilter"><![CDATA[%dw 1.0
+%output application/java
+---
+inboundProperties."http.uri.params".filter]]></dw:set-variable>
+</dw:transform-message>
+        <db:select config-ref="Generic_Database_Configuration" doc:name="Get By Filter">
+            <db:parameterized-query><![CDATA[SELECT SFG_SERVER_ID
+      ,SFG_SERVER_NAME
+      ,SFG_SERVER_STATUS
+      ,SFG_SERVER_APP
+      ,SFG_SERVER_DC
+      ,SFG_SERVER_ZONE
+      ,SFG_SERVER_PROTOCOL
+      ,SFG_SERVER_ADDED_DT
+      ,SFG_SERVER_UPDATE_DT
+  FROM SFG_SERVER
+  WHERE SFG_SERVER_NAME like :searchFilter]]></db:parameterized-query>
+  <db:in-param name="searchFilter"  value="#['%'+flowVars.searchFilter+'%']"/>
+        </db:select>
+
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json skipNullOn="everywhere"
+---
+payload map ((item, index) -> {
+	serverID: item.SFG_SERVER_ID,
+	serverName: item.SFG_SERVER_NAME,
+	serverStatus: item.SFG_SERVER_STATUS,
+	serverApp: item.SFG_SERVER_APP,
+	serverDc: item.SFG_SERVER_DC,
+	serverZone: item.SFG_SERVER_ZONE,
+	serverProtocol: item.SFG_SERVER_PROTOCOL,
+	serverAddedDate: item.SFG_SERVER_ADDED_DT,
+	serverUpdatedDate: item.SFG_SERVER_UPDATED_DT
+   }
+) when payload.size() !=0 otherwise []]]></dw:set-payload>
+        </dw:transform-message>
+        <set-property propertyName="http.status" value="#[dw('200 when payload != [] otherwise 404')]" doc:name="Set HTTP Status"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload when outboundProperties."http.status" == 200 
+otherwise "No Record Found"
+]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+
+    </sub-flow>
+
+         <sub-flow name="getServerByIdFlow">
+        <logger level="INFO" doc:name="Logger" message="Request Received From Getting Data from Database"/>
+              <dw:transform-message doc:name="Setting Variables">
+	<dw:set-variable variableName="offset"><![CDATA[%dw 1.0
+	%output application/java
+	---
+	inboundProperties."http.query.params".offset when inboundProperties."http.query.params".offset !=null otherwise 0]]>
+	</dw:set-variable>
+	<dw:set-variable variableName="fetchsize"><![CDATA[%dw 1.0
+	%output application/java
+	---
+	inboundProperties."http.query.params".fetchsize when inboundProperties."http.query.params".fetchsize !=null otherwise 20]]>
+	</dw:set-variable>
+		<dw:set-variable variableName="serverId"><![CDATA[%dw 1.0
+%output application/java
+---
+inboundProperties."http.uri.params".serverid]]>
+	</dw:set-variable>
+</dw:transform-message>
+       
+        <db:select config-ref="Generic_Database_Configuration" doc:name="Get By Id">
+            <db:parameterized-query><![CDATA[SELECT SFG_SERVER_ID
+      ,SFG_SERVER_NAME
+      ,SFG_SERVER_STATUS
+      ,SFG_SERVER_APP
+      ,SFG_SERVER_DC
+      ,SFG_SERVER_ZONE
+      ,SFG_SERVER_PROTOCOL
+      ,SFG_SERVER_ADDED_DT
+      ,SFG_SERVER_UPDATE_DT
+  FROM SFG_SERVER
+  WHERE SFG_SERVER_ID = :serverId]]></db:parameterized-query>
+  <db:in-param name="serverId"  value="#[flowVars.serverId]"/>
+        </db:select>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json skipNullOn="everywhere"
+---
+{
+	serverID: payload.SFG_SERVER_ID,
+	serverName: payload.SFG_SERVER_NAME,
+	serverStatus: payload.SFG_SERVER_STATUS,
+	serverApp: payload.SFG_SERVER_APP,
+	serverDc: payload.SFG_SERVER_DC,
+	serverZone: payload.SFG_SERVER_ZONE,
+	serverProtocol: payload.SFG_SERVER_PROTOCOL,
+	serverAddedDate: payload.SFG_SERVER_ADDED_DT,
+	serverUpdatedDate: payload.SFG_SERVER_UPDATED_DT 
+} when payload.size() !=0 otherwise []]]></dw:set-payload>
+        </dw:transform-message>
+        <set-property propertyName="http.status" value="#[dw('200 when payload != [] otherwise 404')]" doc:name="Set HTTP Status"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload when outboundProperties."http.status" == 200 
+otherwise "No Record Found"
+]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+
+    </sub-flow>
+
+     <sub-flow name="postServerFlow">
+      <logger level="INFO" doc:name="Logger" message="getting data from database"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+    SFG_SERVER_NAME: payload.serverName,
+    SFG_SERVER_STATUS: payload.serverStatus,
+    SFG_SERVER_APP: payload.serverApp,
+    SFG_SERVER_DC: payload.serverDc,
+    SFG_SERVER_ZONE: payload.serverZone,
+    SFG_SERVER_PROTOCOL: payload.serverProtocol,
+    SFG_SERVER_ADDED_DT: payload.serverAddedDate,
+    SFG_SERVER_UPDATED_DT: payload.serverUpdatedDate
+}]]></dw:set-payload>
+        </dw:transform-message>
+
+        <db:insert config-ref="Generic_Database_Configuration" doc:name="Insert Record">
+            <db:parameterized-query><![CDATA[INSERT INTO SFG_SERVER
+(SFG_SERVER_NAME,SFG_SERVER_STATUS,SFG_SERVER_APP,SFG_SERVER_DC,SFG_SERVER_ZONE,
+SFG_SERVER_PROTOCOL,SFG_SERVER_ADDED_DT,SFG_SERVER_UPDATED_DT)
+VALUES
+(:serverName,:serverStatus,:serverApp,:serverDc,:serverZone,:serverProtocol,:serverAddedDt,
+:serverUpdatedDt)]]></db:parameterized-query>
+<db:in-param name="serverName"  value="#[payload.SFG_SERVER_NAME]"/>
+<db:in-param name="serverStatus"  value="#[payload.SFG_SERVER_STATUS]"/>
+<db:in-param name="serverApp"  value="#[payload.SFG_SERVER_APP]"/>
+<db:in-param name="serverDc"  value="#[payload.SFG_SERVER_DC]"/>
+<db:in-param name="serverZone"  value="#[payload.SFG_SERVER_ZONE]"/>
+<db:in-param name="serverProtocol"  value="#[payload.SFG_SERVER_PROTOCOL]"/>
+<db:in-param name="serverAddedDt"  value="#[payload.SFG_SERVER_ADDED_DT]"/>
+<db:in-param name="serverUpdatedDt"  value="#[payload.SFG_SERVER_UPDATED_DT]"/>
+
+        </db:insert>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+"Record Inserted Successfully"
+]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+      <sub-flow name="deleteServerFlow">
+       <logger level="INFO" doc:name="Logger" message="getting data from database"/>
+        <set-variable variableName="serverId" value="#[message.inboundProperties.'http.uri.params'.serverid]" doc:name="serverId"/>
+        <db:delete config-ref="Generic_Database_Configuration" doc:name="Delete Record">
+            <db:parameterized-query><![CDATA[DELETE FROM SFG_SERVER WHERE SFG_SERVER_ID = :serverId]]></db:parameterized-query>
+ <db:in-param name="serverId"  value="#[flowVars.serverId]"/>
+        </db:delete>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+("Record Deleted Successfully" when payload != 0 otherwise "No Record Found")
+]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+      
+	  <sub-flow name="putServerFlow">
+        <logger level="INFO" doc:name="Logger" message="getting data from database"/>
+               <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+    SFG_SERVER_NAME: payload.serverName,
+    SFG_SERVER_STATUS: payload.serverStatus,
+    SFG_SERVER_APP: payload.serverApp,
+    SFG_SERVER_DC: payload.serverDc,
+    SFG_SERVER_ZONE: payload.serverZone,
+    SFG_SERVER_PROTOCOL: payload.serverProtocol,
+    SFG_SERVER_ADDED_DT: payload.serverAddedDate,
+    SFG_SERVER_UPDATED_DT: payload.serverUpdatedDate
+}]]></dw:set-payload>
+            <dw:set-variable variableName="serverId"><![CDATA[%dw 1.0
+%output application/java
+---
+inboundProperties."http.uri.params".serverid]]></dw:set-variable>
+        </dw:transform-message>
+        <json:json-to-object-transformer returnClass="java.util.HashMap" doc:name="JSON to Object"/>
+        <db:update config-ref="Generic_Database_Configuration" doc:name="Update record">
+            <db:parameterized-query><![CDATA[UPDATE SFG_SERVER SET
+
+SFG_SERVER_NAME =  :serverName
+,SFG_SERVER_STATUS = :serverStatus
+,SFG_SERVER_APP = :serverApp
+,SFG_SERVER_DC = :serverDc
+,SFG_SERVER_ZONE = :serverZone
+,SFG_SERVER_PROTOCOL = :serverProtocol
+,SFG_SERVER_ADDED_DT = :serverAddedDt
+,SFG_SERVER_UPDATED_DT =:serverUpdatedDt
+ where
+SFG_SERVER_ID = :id]]></db:parameterized-query>
+<db:in-param name="serverName"  value="#[payload.SFG_SERVER_NAME]"/>
+<db:in-param name="serverStatus"  value="#[payload.SFG_SERVER_STATUS]"/>
+<db:in-param name="serverApp"  value="#[payload.SFG_SERVER_APP]"/>
+<db:in-param name="serverDc"  value="#[payload.SFG_SERVER_DC]"/>
+<db:in-param name="serverZone"  value="#[payload.SFG_SERVER_ZONE]"/>
+<db:in-param name="serverProtocol"  value="#[payload.SFG_SERVER_PROTOCOL]"/>
+<db:in-param name="serverAddedDt"  value="#[payload.SFG_SERVER_ADDED_DT]"/>
+<db:in-param name="serverUpdatedDt"  value="#[payload.SFG_SERVER_UPDATED_DT]"/>
+<db:in-param name="id"  value="#[flowVars.serverId]"/>
+        </db:update>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+"Record Updated Successfully" when payload != 0 otherwise "No Record Found" 
+]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+</mule>
+
+<!--  server XML Ends -->
