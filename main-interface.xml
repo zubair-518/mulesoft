@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd">
+    <http:listener-config name="main-interface-httpListenerConfig" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration" />
+    <apikit:config name="main-interface-config" raml="main-interface.raml" consoleEnabled="false" doc:name="Router" />
+    <flow name="main-interface-main">
+        <http:listener config-ref="main-interface-httpListenerConfig" path="/v1/sfg/*" doc:name="HTTP" />
+        <apikit:router config-ref="main-interface-config" doc:name="APIkit Router" />
+        <exception-strategy ref="global-exceptionChoice_Exception_Strategy" doc:name="Reference Exception Strategy" />
+    </flow>
+    <flow name="main-interface-console">
+        <http:listener config-ref="main-interface-httpListenerConfig" path="/console/*" doc:name="HTTP" />
+        <apikit:console config-ref="main-interface-config" doc:name="APIkit Console" />
+    </flow>
+    <flow name="delete:/server/{serverid}:main-interface-config">
+        <flow-ref name="deleteServerFlow" doc:name="Flow Reference" />
+    </flow>
+    <flow name="delete:/user/{userid}:main-interface-config">
+        <flow-ref name="deleteUserFlow" doc:name="Flow Reference" />
+    </flow>
+    <flow name="patch:/server/{serverid}:main-interface-config">
+        <flow-ref name="putServerFlow" doc:name="Flow Reference"/>
+
+    </flow>
+    <flow name="patch:/user/{userid}:main-interface-config">
+        <flow-ref name="patchUserFlow" doc:name="Flow Reference" />
+    </flow>
+    <flow name="get:/user/filter/{filter}:main-interface-config">
+        <flow-ref name="getUserFlow_filter" doc:name="Flow Reference" />
+    </flow>
+    <flow name="get:/server/filter/{filter}:main-interface-config">
+        <flow-ref name="getServerFlow_filter" doc:name="Flow Reference" />
+    </flow>
+    <flow name="get:/server:main-interface-config">
+        <flow-ref name="getServerFlow" doc:name="Flow Reference" />
+    </flow>
+    <flow name="get:/transfer/{id}/status:main-interface-config">
+        <flow-ref name="getUserByIdFlow" doc:name="Flow Reference" />
+    </flow>
+    <flow name="get:/transfer:main-interface-config">
+        <flow-ref name="getTransferFlow" doc:name="Flow Reference" />
+    </flow>
+    <flow name="get:/user:main-interface-config">
+        <flow-ref name="getUserOffsetValueFlow" doc:name="Flow Reference" />
+    </flow>
+    <flow name="get:/transfer/{filter}:main-interface-config">
+        <flow-ref name="getTransferFlow_filter" doc:name="Flow Reference" />
+    </flow>
+    <flow name="get:/server/{serverid}:main-interface-config">
+        <flow-ref name="getServerByIdFlow" doc:name="Flow Reference" />
+    </flow>
+    <flow name="get:/user/{userid}:main-interface-config">
+        <flow-ref name="getUserByIdFlow" doc:name="Flow Reference" />
+    </flow>
+    <flow name="post:/server:main-interface-config">
+        <flow-ref name="postServerFlow" doc:name="Flow Reference" />
+    </flow>
+    <flow name="post:/user:main-interface-config">
+        <flow-ref name="postUserFlow" doc:name="Flow Reference" />
+    </flow>
+    <flow name="delete:/routing/{routingid}:main-interface-config">
+        <flow-ref name="deleteRoutingFlow" doc:name="deleteRoutingFlow"/>
+
+    </flow>
+    <flow name="patch:/routing/{routingid}:main-interface-config">
+        <flow-ref name="patchRoutingFlow" doc:name="patchRoutingFlow"/>
+
+    </flow>
+    <flow name="get:/routing/filter/{filter}:main-interface-config">
+        <flow-ref name="getRoutingFlow_filter" doc:name="getRoutingFlow_filter"/>
+
+    </flow>
+    <flow name="get:/routing:main-interface-config">
+        <flow-ref name="getRoutingOffsetValueFlow" doc:name="getRoutingOffsetValueFlow"/>
+
+    </flow>
+    <flow name="get:/routing/{routingid}:main-interface-config">
+        <flow-ref name="getRoutingByIdFlow" doc:name="getRoutingByIdFlow"/>
+
+    </flow>
+    <flow name="post:/routing:main-interface-config">
+        <flow-ref name="postRoutingFlow" doc:name="postRoutingFlow"/>
+
+    </flow>
+</mule>
