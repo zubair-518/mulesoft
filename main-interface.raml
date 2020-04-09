@@ -1,0 +1,185 @@
+#%RAML 1.0
+baseUri: https://anypoint.mulesoft.com/mocking/api/v1/links/fac5fd05-0882-4ee0-a1d4-01cc701c9927/ # 
+title: poc_rest_api
+version: 1.0.0
+protocols:  [HTTP , HTTPS]
+description: This api used to call backend database by doing CRUD operations.
+
+/user:
+  get:
+    queryParameters: 
+      offset?:  number
+      fetchsize?: number
+    description: used to retrive users information
+    responses:
+      200:
+        body:
+          application/json:
+  post:
+    description: This method uses to create user details
+    body:
+      application/json:
+    responses:
+      201:
+        body:
+          application/json:
+            example:
+               "message": "user successfully created"
+  /filter/{filter}:
+    get:
+      description: This method is used to retrieve a user info
+      responses:
+        200:
+          body:
+            application/json:
+  /{userid}:
+    get:
+      description: This method is used to retrieve a user info
+      responses:
+        200:
+          body:
+            application/json:
+    patch:
+      description: This method uses to update user details
+      body:
+        application/json:
+      responses:
+        201:
+          body:
+            application/json:
+              example:
+                 "message": "user updated successfully created"
+    delete:
+      description: This method is used to delete a user info
+      responses:
+        200:
+          body:
+            application/json:
+      
+/server:
+  get:
+    queryParameters: 
+      offset?:  number
+      fetchsize?: number
+    description: used to retrive server information
+    responses:
+      200:
+        body:
+          application/json:
+  post:
+    description: This method uses to create server details
+    body:
+      application/json:
+    responses:
+      201:
+        body:
+          application/json:
+            example:
+               "message": "server successfully created"
+  /filter/{filter}:
+    get:
+      description: This method is used to retrieve a server info
+      responses:
+        200:
+          body:
+            application/json:
+
+  /{serverid}:
+    get:
+      description: This method is used to retrieve a server info
+      responses:
+        200:
+          body:
+            application/json:
+    patch:
+      description: This method is used to update a server info
+      body:
+        application/json:
+      responses:
+        200:
+          body:
+            application/json:
+              example: |
+                "message": "server successfully updated"
+    delete:
+      description: This method is used to delete a server info
+      responses:
+        200:
+          body:
+            application/json:
+/transfer:
+  get:
+    queryParameters: 
+      offset?:  number
+      fetchsize?: number
+    description: used to retrive transfer information
+    responses:
+      200:
+        body:
+          application/json:
+  /{filter}:
+    get:
+      description: used to retrive transfer information
+      responses:
+        200:
+          body:
+            application/json:
+  /{id}:
+    /status:
+      get:
+        description: This method is used to retrieve the list of  transfer by id.
+        responses:
+          200:
+            body:
+              application/json:
+/routing:
+  get:
+    queryParameters: 
+      offset?:  number
+      fetchsize?: number
+    description: used to retrive users information
+    responses:
+      200:
+        body:
+          application/json:
+  post:
+    description: This method uses to create user details
+    body:
+      application/json:
+    responses:
+      201:
+        body:
+          application/json:
+            example:
+               "message": "user successfully created"
+  /filter/{filter}:
+    get:
+      description: This method is used to retrieve a user info
+      responses:
+        200:
+          body:
+            application/json:
+  /{routingid}:
+    get:
+      description: This method is used to retrieve a user info
+      responses:
+        200:
+          body:
+            application/json:
+    patch:
+      description: This method uses to update user details
+      body:
+        application/json:
+      responses:
+        201:
+          body:
+            application/json:
+              example:
+                 "message": "user updated successfully created"
+    delete:
+      description: This method is used to delete a user info
+      responses:
+        200:
+          body:
+            application/json:
+  
