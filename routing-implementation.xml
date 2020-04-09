@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+    <sub-flow name="getRoutingOffsetValueFlow">
+        <logger level="INFO" doc:name="Logger" message="getting data from database"/>
+                <dw:transform-message doc:name="Setting Variables">
+            <dw:set-variable variableName="offset"><![CDATA[%dw 1.0
+%output application/java
+---
+inboundProperties."http.query.params".offset when inboundProperties."http.query.params".offset !=null otherwise 0]]></dw:set-variable>
+            <dw:set-variable variableName="fetchsize"><![CDATA[%dw 1.0
+%output application/java
+---
+inboundProperties."http.query.params".fetchsize when inboundProperties."http.query.params".fetchsize !=null otherwise 20]]></dw:set-variable>
+        </dw:transform-message>
+	
+        <db:select config-ref="Generic_Database_Configuration" doc:name="Get All Records">
+            <db:parameterized-query><![CDATA[SELECT SFG_ROUTING_ID
+      ,SFG_ROUTING_NAME
+      ,SFG_ROUTING_NETMAP
+      ,SFG_ROUTING_NODE
+      ,SFG_ROUTING_PASSWORD
+      ,SFG_ROUTING_HASH
+      ,SFG_ROUTING_SALT
+      ,SFG_ROUTING_TYPE
+      ,SFG_ROUTING_ADDED_DT
+      ,SFG_ROUTING_PUBLICKEY
+  FROM SFG_ROUTING
+  OFFSET :offset rows fetch next :fetchsize rows only]]></db:parameterized-query>
+  <db:in-param name="offset"  value="#[flowVars.offset]"/>
+    <db:in-param name="fetchsize"  value="#[flowVars.fetchsize]"/>
+        </db:select>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json skipNullOn="everywhere"
+---
+payload map ((item, index) -> {
+	routingId : item.SFG_ROUTING_ID,
+	routingName : item.SFG_ROUTING_NAME,
+	routingNetmap : item.SFG_ROUTING_NETMAP,
+	routingNode : item.SFG_ROUTING_NODE,
+	routingPassword : item.SFG_ROUTING_PASSWORD,
+	routingHash : item.SFG_ROUTING_HASH,
+	routingSalt : item.SFG_ROUTING_SALT,
+	routingType : item.SFG_ROUTING_TYPE,
+	routingAddedDt : item.SFG_ROUTING_ADDED_DT,
+	routingPublicKey : item.SFG_ROUTING_PUBLICKEY
+}) when payload.size() !=0 otherwise []
+]]></dw:set-payload>
+        </dw:transform-message>
+        <set-property propertyName="http.status" value="#[dw('200 when payload != [] otherwise 404')]" doc:name="Set HTTP Status"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload when outboundProperties."http.status" == 200 
+otherwise "No Record Found"
+]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+   <!--  Filter by original file Routing -->
+     <sub-flow name="getRoutingFlow_filter">
+        <logger level="INFO" doc:name="Logger" message="getting data from database"/>
+        <dw:transform-message doc:name="Setting Variables">
+	<dw:set-variable variableName="offset"><![CDATA[%dw 1.0
+	%output application/java
+	---
+	inboundProperties."http.query.params".offset when inboundProperties."http.query.params".offset !=null otherwise 0]]>
+	</dw:set-variable>
+	<dw:set-variable variableName="fetchsize"><![CDATA[%dw 1.0
+	%output application/java
+	---
+	inboundProperties."http.query.params".fetchsize when inboundProperties."http.query.params".fetchsize !=null otherwise 20]]>
+	</dw:set-variable>
+            <dw:set-variable variableName="searchFilter"><![CDATA[%dw 1.0
+%output application/java
+---
+inboundProperties."http.uri.params".filter]]></dw:set-variable>
+</dw:transform-message>
+        <db:select config-ref="Generic_Database_Configuration" doc:name="Get By Filter">
+            <db:parameterized-query><![CDATA[SELECT SFG_ROUTING_ID
+      ,SFG_ROUTING_NAME
+      ,SFG_ROUTING_NETMAP
+      ,SFG_ROUTING_NODE
+      ,SFG_ROUTING_PASSWORD
+      ,SFG_ROUTING_HASH
+      ,SFG_ROUTING_SALT
+      ,SFG_ROUTING_TYPE
+      ,SFG_ROUTING_ADDED_DT
+      ,SFG_ROUTING_PUBLICKEY
+  FROM SFG_ROUTING
+  WHERE SFG_Routing_NAME like :searchFilter]]></db:parameterized-query>
+  <db:in-param name="searchFilter"  value="#['%'+flowVars.searchFilter+'%']"/>
+        </db:select>
+             <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json skipNullOn="everywhere"
+---
+payload map ((item, index) -> {
+	routingId : item.SFG_ROUTING_ID,
+	routingName : item.SFG_ROUTING_NAME,
+	routingNetmap : item.SFG_ROUTING_NETMAP,
+	routingNode : item.SFG_ROUTING_NODE,
+	routingPassword : item.SFG_ROUTING_PASSWORD,
+	routingHash : item.SFG_ROUTING_HASH,
+	routingSalt : item.SFG_ROUTING_SALT,
+	routingType : item.SFG_ROUTING_TYPE,
+	routingAddedDt : item.SFG_ROUTING_ADDED_DT,
+	routingPublicKey : item.SFG_ROUTING_PUBLICKEY
+}) when payload.size() !=0 otherwise []
+]]></dw:set-payload>
+        </dw:transform-message>
+        <set-property propertyName="http.status" value="#[dw('200 when payload != [] otherwise 404')]" doc:name="Set HTTP Status"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload when outboundProperties."http.status" == 200 
+otherwise "No Record Found"
+]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+	 </sub-flow>
+     
+	 <sub-flow name="getRoutingByIdFlow">
+        <logger level="INFO" doc:name="Logger" message="getting data from database"/>
+    <dw:transform-message doc:name="Setting Variables">
+	<dw:set-variable variableName="RoutingId"><![CDATA[%dw 1.0
+	%output application/java
+	---
+	inboundProperties."http.uri.params".routingid]]>
+		</dw:set-variable>
+</dw:transform-message>
+		<db:select config-ref="Generic_Database_Configuration" doc:name="Get By Id">
+            <db:parameterized-query><![CDATA[SELECT SFG_ROUTING_ID
+      ,SFG_ROUTING_NAME
+      ,SFG_ROUTING_NETMAP
+      ,SFG_ROUTING_NODE
+      ,SFG_ROUTING_PASSWORD
+      ,SFG_ROUTING_HASH
+      ,SFG_ROUTING_SALT
+      ,SFG_ROUTING_TYPE
+      ,SFG_ROUTING_ADDED_DT
+      ,SFG_ROUTING_PUBLICKEY
+  FROM SFG_ROUTING
+  WHERE SFG_Routing_ID= :routingid]]></db:parameterized-query>
+<db:in-param name="routingid"  value="#[flowVars.RoutingId]"/>
+        </db:select>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json skipNullOn="everywhere"
+---
+payload map ((item, index) -> {
+	routingId : item.SFG_ROUTING_ID,
+	routingName : item.SFG_ROUTING_NAME,
+	routingNetmap : item.SFG_ROUTING_NETMAP,
+	routingNode : item.SFG_ROUTING_NODE,
+	routingPassword : item.SFG_ROUTING_PASSWORD,
+	routingHash : item.SFG_ROUTING_HASH,
+	routingSalt : item.SFG_ROUTING_SALT,
+	routingType : item.SFG_ROUTING_TYPE,
+	routingAddedDt : item.SFG_ROUTING_ADDED_DT,
+	routingPublicKey : item.SFG_ROUTING_PUBLICKEY
+}) when payload.size() !=0 otherwise []
+]]></dw:set-payload>
+        </dw:transform-message>
+        <set-property propertyName="http.status" value="#[dw('200 when payload != [] otherwise 404')]" doc:name="Set HTTP Status"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload[0] when outboundProperties."http.status" == 200 
+otherwise "No Record Found"
+]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+
+    </sub-flow>
+     <sub-flow name="postRoutingFlow">
+      <logger level="INFO" doc:name="Logger" message="getting data from database"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json skipNullOn="everywhere"
+---
+{
+	SFG_ROUTING_NAME : payload.routingName,
+	SFG_ROUTING_NETMAP : payload.routingNetmap,
+	SFG_ROUTING_NODE : payload.routingNode,
+	SFG_ROUTING_PASSWORD : payload.routingPassword,
+	SFG_ROUTING_HASH : payload.routingHash,
+	SFG_ROUTING_SALT : payload.routingSalt,
+	SFG_ROUTING_TYPE : payload.routingType,
+	SFG_ROUTING_ADDED_DT : payload.routingAddedDt,
+	SFG_ROUTING_PUBLICKEY : payload.routingPublicKey 
+}]]></dw:set-payload>
+        </dw:transform-message>
+
+        <db:insert config-ref="Generic_Database_Configuration" doc:name="Insert Record">
+            <db:parameterized-query><![CDATA[INSERT INTO SFG_ROUTING
+(SFG_ROUTING_NAME,SFG_ROUTING_NETMAP,SFG_ROUTING_NODE,SFG_ROUTING_PASSWORD,SFG_ROUTING_HASH,SFG_ROUTING_SALT,SFG_ROUTING_TYPE,SFG_ROUTING_ADDED_DT,SFG_ROUTING_PUBLICKEY)
+VALUES (:routingName,:routingNetmap,:routingNode,:routingPassword,:routingHash,:routingSalt,:routingType,
+CAST(SYS_EXTRACT_UTC(SYSTIMESTAMP) AS DATE),:routingPublicKey)]]></db:parameterized-query>
+		<db:in-param name="routingName"  value="#[payload.SFG_Routing_NAME]"/>
+		<db:in-param name="routingNetmap"  value="#[payload.SFG_ROUTING_NETMAP]"/>
+		<db:in-param name="routingNode"  value="#[payload.SFG_ROUTING_NODE]"/>
+		<db:in-param name="routingPassword"  value="#[payload.SFG_ROUTING_PASSWORD]"/>
+		<db:in-param name="routingHash"  value="#[payload.SFG_ROUTING_HASH]"/>
+		<db:in-param name="routingSalt"  value="#[payload.SFG_ROUTING_SALT]"/>
+		<db:in-param name="routingType"  value="#[payload.SFG_ROUTING_TYPE]"/>
+		<db:in-param name="routingAddedDt"  value="#[payload.SFG_ROUTING_ADDED_DT]"/>
+		<db:in-param name="routingPublicKey"  value="#[payload.SFG_ROUTING_PUBLICKEY]"/>
+		
+		
+        </db:insert>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+"Record Inserted Successfully"
+]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+      <sub-flow name="deleteRoutingFlow">
+       <logger level="INFO" doc:name="Logger" message="getting data from database"/>
+        <set-variable variableName="RoutingId" value="#[message.inboundProperties.'http.uri.params'.routingid]" doc:name="RoutingId"/>
+        <db:delete config-ref="Generic_Database_Configuration" doc:name="Delete Record">
+            <db:parameterized-query><![CDATA[Delete from SFG_Routing where SFG_Routing_ID = :routingid]]></db:parameterized-query>
+	<db:in-param name="routingid"  value="#[flowVars.RoutingId]"/>
+        </db:delete>
+        <set-property propertyName="http.status" value="#[dw('200 when payload != 0 otherwise 404')]" doc:name="Set HTTP Status"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+("Record Deleted Successfully" when payload != 0 otherwise "No Record Found")
+]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+       <sub-flow name="patchRoutingFlow">
+        <logger level="INFO" doc:name="Logger" message="getting data from database"/>
+
+                <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json skipNullOn="everywhere"
+---
+{
+	SFG_ROUTING_NAME : payload.routingName,
+	SFG_ROUTING_NETMAP : payload.routingNetmap,
+	SFG_ROUTING_NODE : payload.routingNode,
+	SFG_ROUTING_PASSWORD : payload.routingPassword,
+	SFG_ROUTING_HASH : payload.routingHash,
+	SFG_ROUTING_SALT : payload.routingSalt,
+	SFG_ROUTING_TYPE : payload.routingType,
+	SFG_ROUTING_ADDED_DT : payload.routingAddedDt,
+	SFG_ROUTING_PUBLICKEY : payload.routingPublicKey 
+}]]></dw:set-payload>
+            <dw:set-variable variableName="RoutingId"><![CDATA[%dw 1.0
+%output application/java
+---
+inboundProperties.'http.uri.params'.Routingid]]></dw:set-variable>
+        </dw:transform-message>
+        <db:update config-ref="Generic_Database_Configuration" doc:name="Update record">
+            <db:parameterized-query><![CDATA[UPDATE SFG_Routing SET
+	SFG_ROUTING_NAME = :routingName,
+	SFG_ROUTING_NETMAP = :routingNetmap,
+	SFG_ROUTING_NODE = :routingNode,
+	SFG_ROUTING_PASSWORD = :routingPassword,
+	SFG_ROUTING_HASH = :routingHash,
+	SFG_ROUTING_SALT = :routingSalt,
+	SFG_ROUTING_TYPE = :routingType,
+	SFG_ROUTING_ADDED_DT = :routingAddedDt,
+	SFG_ROUTING_PUBLICKEY = :routingPublicKey 
+ where
+SFG_Routing_ID = :routingid]]></db:parameterized-query>
+		<db:in-param name="routingid"  value="#[flowVars.RoutingId]"/>
+		<db:in-param name="routingName"  value="#[payload.SFG_Routing_NAME]"/>
+		<db:in-param name="routingNetmap"  value="#[payload.SFG_ROUTING_NETMAP]"/>
+		<db:in-param name="routingNode"  value="#[payload.SFG_ROUTING_NODE]"/>
+		<db:in-param name="routingPassword"  value="#[payload.SFG_ROUTING_PASSWORD]"/>
+		<db:in-param name="routingHash"  value="#[payload.SFG_ROUTING_HASH]"/>
+		<db:in-param name="routingSalt"  value="#[payload.SFG_ROUTING_SALT]"/>
+		<db:in-param name="routingType"  value="#[payload.SFG_ROUTING_TYPE]"/>
+		<db:in-param name="routingAddedDt"  value="#[payload.SFG_ROUTING_ADDED_DT]"/>
+		<db:in-param name="routingPublicKey"  value="#[payload.SFG_ROUTING_PUBLICKEY]"/>
+
+
+
+        </db:update>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+"Record Updated Successfully" when payload != 0 otherwise "No Record Found" 
+]]></dw:set-payload>
+        </dw:transform-message>
+        <set-property propertyName="http.status" value="#[dw('200 when payload == &quot;Record Updated Successfully&quot;otherwise 404')]" doc:name="Set HTTP Status"/>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+</mule>
